@@ -1350,35 +1350,27 @@ window.PPW= (function($, _d, console){
                 zooing= true;
                 setTimeout(function(){
                     zooing= false;
-                }, 1000);
+                }, 100);
 
                 if(_isLocked(event)){
                     console.warn("[PPW] User interaction(zoom) ignored because Power Polygon has been locked");
                     return false;
                 }
             
-                var container= $('.ppw-active-slide-element-container').eq(0)[0],
-                    centerH= container? container.offsetWidth/2: 0,
-                    centerV= container? container.offsetHeight/2: 0,
+                var container= $('.ppw-active-slide-element-container')[0],
                     evt= event.originalEvent,
-                    delta = evt.detail < 0 || evt.wheelDelta > 0 ? 1 : -1,
+                    delta= evt.detail < 0 || evt.wheelDelta > 0 ? 1 : -1,
                     zommAdd= delta>0? 0.1: -0.1,
                     newZoom= _conf.currentZoom + zommAdd,
-                    posH= evt.offsetX, posV= evt.offsetY,
-                    finalH= posH,//(centerH + ((centerH - posH)*-1)) * newZoom,
-                    finalV= posV;
+                    ratio= newZoom / _conf.currentZoom,
+                    posX= evt.offsetX,
+                    posY= evt.offsetY,
 
-// todo: Find a better way of applying a zoom referencing the mouse position
-//console.log({posH: posH, centerH: centerH, finalH: finalH, newZoom: newZoom});
+                    finalX= posX - (posX - _conf.currentLeft) / ratio,
+                    finalY= posY - (posY - _conf.currentTop) / ratio;
 
                 if(_conf.presentationStarted && !_isEditableTargetContent(evt.target)){
-                    evt= evt.originalEvent;
-
-                    if(delta > 0){ // up
-                        _zoomBy(0.1, finalH, finalV);
-                    }else{ // down
-                        _zoomBy(-0.1, finalH, finalV);
-                    }
+                    _zoomBy(zommAdd, finalX, finalY);
                 }
             }
             $d.bind('DOMMouseScroll', mouseWheelFn);
@@ -3062,6 +3054,8 @@ window.PPW= (function($, _d, console){
     };
     
     var _resetViewport= function(){
+        _conf.currentLeft= null;
+        _conf.currentTop= null;
         if(_conf.currentZoom){
             _viewport({zoom: 1});
             _conf.currentZoom= 1;
@@ -3093,7 +3087,7 @@ window.PPW= (function($, _d, console){
             sentTarget= false,
             container= $('.ppw-active-slide-element-container').eq(0),
             l, t, w, h, hCenter, vCenter, hLimit, vLimit;
-        
+
         if(!_conf.presentationStarted)
             return false;
         
@@ -3131,21 +3125,11 @@ window.PPW= (function($, _d, console){
         hCenter= l/2 + w/2;
         vCenter= t/2 + h/2;
         
-        if(data.left < 0) data.left= 0;
-        if(data.top < 0) data.top= 0;
-        
         data.left= (data.left == undefined || data.left === false)? hCenter: parseInt(data.left, 10);
         data.top = (data.top == undefined || data.top === false)? vCenter: parseInt(data.top, 10);
         
         hLimit= l+w - (l*data.times)/2;
         vLimit= t+h - (t*data.times)/2;
-            
-        if(data.left >= hLimit){
-            data.left= hLimit;
-        }
-        if(data.top >= vLimit){
-            data.top= vLimit;
-        }
         
         if(!curTransform || curTransform == 'none'){
             curTransform= '';
@@ -3173,13 +3157,19 @@ window.PPW= (function($, _d, console){
         curTransform+= " matrix(" + mx.join(', ')+") ";
         container.css(vendor+'transform-origin', data.left+'px '+data.top+'px');
         container.css(vendor+'transform', curTransform);
+        _conf.currentLeft= data.left;
+        _conf.currentTop= data.top;
         _conf.currentZoom= data.times;
         return PPW;
     };
     
     var _zoomBy= function(by, left, top, rotate){
         _conf.currentZoom+= by;
-        _viewport({zoom: _conf.currentZoom, left: left, top: top, rotate: rotate});
+        if (_conf.currentZoom <= 1) {
+            _resetViewport();
+        } else {
+            _viewport({zoom: _conf.currentZoom, left: left, top: top, rotate: rotate});
+        }
     }
     
     /**
