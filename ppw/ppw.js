@@ -1342,7 +1342,15 @@ window.PPW= (function($, _d, console){
         
         // scrolling, for zoom
         if(_settings.zoomOnScroll){
+            var zooing= false;
             mouseWheelFn= function(event){
+                if(zooing){
+                    return;
+                }
+                zooing= true;
+                setTimeout(function(){
+                    zooing= false;
+                }, 1000);
 
                 if(_isLocked(event)){
                     console.warn("[PPW] User interaction(zoom) ignored because Power Polygon has been locked");
